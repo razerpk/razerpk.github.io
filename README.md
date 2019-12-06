@@ -1,14 +1,6 @@
 ** TODO **
 
--watchposition ottaa muuttujaan talteen locaatiot -> liikkuu marker.
--käy läpi marker taulukko ja kaho onko tyyppi lähellä eli aktvoi booster jne (distance vertailu min-distaneslla marker-user)
-
--UI (Bootstrap vai semantic ui?)
--lähestymisäänet (kun booster näköalueella)
-
-=GEGE
-
--help button
+- HOW TO PLAY INFO
 
 -----------------------------------------------------------------------------------------------------------------------------
 

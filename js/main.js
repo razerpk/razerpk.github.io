@@ -1,22 +1,32 @@
-let clickLocationOnMap = []
+let map = {}
+let canvas
 let MARKERS = []
 let userMarker = []
 let walkingPoints = {}
 let userLocation = [29.7636, 62.6010]
 let isLocation = false
+
 const LatitudeInKm = 110.574
 const LongitudeInKm = 111.320
-let map = {}
+
+let activeBoosters = 0
+let gameTime = 0 //seconds
+
+let VISION_RANGE = 0.15 //km
 const MARKER_MIN_DISTANCE = 0.1 //km
 const PICKUP_RADIUS = 0.05 //km
 const ZOOM_LEVEL = 15
-let VISION_RANGE = 0.15 //km
+const PLAYAREA = 0.8 //length of one side of a square in km
+const MARKER_AMOUNT = 30
 
 const main = async () => {
     await displayMap()
     await addUiListeners()
     getLocation()
 
+    canvas = document.getElementById('overlayCanvas')
+    drawVisionRange()
+    
     document.getElementById('gameButton').onclick = function(e){ gameButtonPressed() }
 }
 
@@ -32,18 +42,21 @@ const gameButtonPressed = () => {
 }
 
 const startGame = () => {
-    let canvas = document.getElementById('overlayCanvas')
 
-    drawVisionRange(canvas)
-
+    drawVisionRange()
     window.addEventListener('resize', function(){
-        drawVisionRange(canvas)
+        drawVisionRange()
     })
+
+    let gameTimeLoop = setInterval(() => {
+        document.getElementById('gameTime').innerHTML = `${pad(parseInt(gameTime / 60))}:${pad(gameTime % 60)}`
+        gameTime++
+    }, 1000)
 
     let gameLoop = setInterval(() => {
         isMarkersOnUserRadius()
         if (isMarkerPickable()) {
-            drawVisionRange(canvas)
+            drawVisionRange()
         }
 
         let newUserLocation = [userLocation[0], userLocation[1]]
@@ -62,24 +75,19 @@ const startGame = () => {
     }, 500)
 }
 
-const drawVisionRange = (canvas) => {
+const drawVisionRange = () => {
 
     canvas.height = window.innerHeight
     canvas.width = window.innerWidth 
  
-    fillCanvas(canvas, "black")
+    fillCanvas("black")
     let pixelInKm = kmDistancePerPixel(userLocation[1])
-    clearCircleArea(canvas, canvas.width/2, canvas.height/2, VISION_RANGE/pixelInKm)
+    clearCircleArea(VISION_RANGE/pixelInKm)
 }
 
 const displayMap = () => {
     let pageMap = document.getElementById("map")
     mapboxgl.accessToken = 'pk.eyJ1IjoiZXBlbGkiLCJhIjoiY2sydTVsdnRwMWU0YTNpcWI4bTRyY3Q5YiJ9.4PJtcpEKynaEHJk67Bz_Iw'
-
-    // TODO use this on user location
-    //userLocation = getLocation()
-    //userLocation = callback()
-    //console.log("in displayMap " + userLocation)
 
     map = new mapboxgl.Map({
         container: pageMap, // container id
@@ -88,14 +96,6 @@ const displayMap = () => {
         zoom: ZOOM_LEVEL, // zoom level for map
         //pitch: 40, // pitch in degrees
     })
-    
-    map.scrollZoom.disable();
-
-    //disable map rotation using right click + drag
-    map.dragRotate.disable();
- 
-    //disable map rotation using touch rotation gesture
-    map.touchZoomRotate.disableRotation();
 
     let geojson = {
         type: 'FeatureCollection',
@@ -139,7 +139,7 @@ const displayMap = () => {
     userMarker.push(userM)
 
     // FOR DEBUGGING
-    map.on('click', (e) => {
+    /*map.on('click', (e) => {
         clickLocationOnMap =  [e.lngLat.lng, e.lngLat.lat]
         map.flyTo({center: clickLocationOnMap})
         userMarker[0]._lngLat.lng = clickLocationOnMap[0]
@@ -148,26 +148,32 @@ const displayMap = () => {
         // Creates polyline for user locations
         walkingPoints.features[0].geometry.coordinates.push(clickLocationOnMap)
         map.getSource('trace').setData(walkingPoints)
-    })
+    })*/
 }
 
 //Listeners for UI elements
 const addUiListeners = () => {
     //let copyright = document.getElementById('copyright')
     document.getElementById('copyright').onclick = function(e){ showCopyrightBox() }
+    document.getElementById('legalBox').onclick = function(e){ hideLegalBox() }
+}
+
+const hideLegalBox = () => {
+    document.getElementById('legalBox').style.display = 'none'
+    document.getElementById('copyright').style.display = 'block'
 }
 
 const showCopyrightBox = () => {
     console.log("GEGE")
     let legalBox = document.getElementById('legalBox')
     legalBox.style.display = 'block'
-    legalBox.innerHTML = '<br>'
-    + '<a target="_blank" href="https://www.mapbox.com/about/maps/">© Mapbox</a>'
-    + '<br>'
-    + '<a target="_blank" href="http://www.openstreetmap.org/copyright">© OpenStreetMap</a>'
-    + '<br>'
-    + '<a target="_blank" href="https://www.mapbox.com/map-feedback/">Improve this map</a>'
-    + '</p>'
+    legalBox.innerHTML = `<br>
+    <a target="_blank" href="https://www.mapbox.com/about/maps/">© Mapbox</a>
+    <br>
+    <a target="_blank" href="http://www.openstreetmap.org/copyright">© OpenStreetMap</a>
+    <br>
+    <a target="_blank" href="https://www.mapbox.com/map-feedback/">Improve this map</a>
+    </p>`
     
     let aElems = document.getElementsByTagName('a')
     for (let i = 0; i < aElems.length; i++)
@@ -179,22 +185,17 @@ const showCopyrightBox = () => {
 const getLocation = () => {
     let geolocation = null
     if(window.navigator && window.navigator.geolocation){
-        //return window.navigator.geolocation.getCurrentPosition(success)
-        console.log('AAYYy')
-        //geolocation = window.navigator.geolocation.getCurrentPosition(success)
         geolocation = window.navigator.geolocation
         console.log(geolocation)
     }
     if(geolocation){
         geolocation.getCurrentPosition(success)
 		
-		// call success when sensor gets new location
+		// call success when the position changes
 		userLocation = geolocation.watchPosition(success,null,{
 			enableHighAccuracy: true,
 			maximumAge: 1000
         });
-        
-        console.log(userLocation)
 		
     }else{
         isLocation = false
@@ -218,10 +219,10 @@ const success = (position) => {
     return [position.coords.longitude, position.coords.latitude]
 }
 
-const addMarkersToMap = (amount = 20) => {
+const addMarkersToMap = () => {
 
     // south, west, north, east
-    const { overpassArea, overpassAreaValues } = calculateOverpassBoundingBoxString(userLocation, 1)
+    const { overpassArea, overpassAreaValues } = calculateOverpassBoundingBoxString(userLocation, PLAYAREA)
 
     let overpassQuery =
         `[timeout:60]
@@ -255,7 +256,7 @@ const addMarkersToMap = (amount = 20) => {
                 marker._element.hidden = true
                 MARKERS = [...MARKERS, marker]
     
-                if (MARKERS.length === amount) {
+                if (MARKERS.length === MARKER_AMOUNT) {
                     break
                 }
             }
@@ -269,7 +270,7 @@ const positionIsGood = (element, overpassAreaValues) => {
     let location = [element.lon, element.lat]
     
     // check if enough far from usermarker
-    if (haversineDistance(location, [userMarker[0]._lngLat.lng, userMarker[0]._lngLat.lat]) < MARKER_MIN_DISTANCE)
+    if (haversineDistance(location, [userMarker[0]._lngLat.lng, userMarker[0]._lngLat.lat]) < VISION_RANGE)
         return false
 
     // check if marker is outside of boundingBox
@@ -377,7 +378,9 @@ const calculateOverpassBoundingBoxString = (center, size) => {
     }
 }
 
-const clearCircleArea = (canvas, x, y, radius) => {
+const clearCircleArea = (radius) => {
+    const x = canvas.width/2
+    const y = canvas.height/2
     let context = canvas.getContext("2d")
     context.beginPath()
     context.arc(x, y, radius, 0, 2 * Math.PI)
@@ -391,7 +394,7 @@ const clearCircleArea = (canvas, x, y, radius) => {
     context.stroke()
 }
 
-const fillCanvas = (canvas, color) => {
+const fillCanvas = (color) => {
     let context = canvas.getContext("2d")
     context.globalAlpha = 0.6;
     context.fillStyle = color
@@ -416,15 +419,15 @@ const isMarkersOnUserRadius = () => {
             // distance between usermarker, MARKERS[i]
             if (haversineDistance([MARKERS[i]._lngLat.lng, MARKERS[i]._lngLat.lat], [userMarker[0]._lngLat.lng, userMarker[0]._lngLat.lat]) < VISION_RANGE) {
                 MARKERS[i]._element.hidden = false
-                let audio = new Audio('./sounds/bruh.mp3');
-                audio.loop = false;
-                audio.play();
+                let audio = new Audio('./sounds/bruh.mp3')
+                audio.loop = false
+                audio.play()
             }
         }
     }
 }
 
-// TODO: GIVE SUPER POWERS
+// TODO: END GAME
 const isMarkerPickable = () => {
     let isMarkerOnRadius = false
 
@@ -434,13 +437,41 @@ const isMarkerPickable = () => {
             // distance between usermarker, MARKERS[i]
             if (haversineDistance([MARKERS[i]._lngLat.lng, MARKERS[i]._lngLat.lat], [userMarker[0]._lngLat.lng, userMarker[0]._lngLat.lat]) < PICKUP_RADIUS) {
                 console.log('im here deleting marker ',  MARKERS[i])
-                isMarkerOnRadius = true
-                VISION_RANGE += 0.01
-                MARKERS[i].remove()
-                MARKERS.splice(i, 1)
-                console.log(MARKERS.length);
+                if (MARKERS[i].endPoint) {
+                    let audio = new Audio('./sounds/end.mp3')
+                    audio.loop = false
+                    audio.play()         
+                } else {
+                    let audio = new Audio('./sounds/YouGotABooster.mp3')
+                    audio.loop = false
+                    audio.play()
+                    isMarkerOnRadius = true
+                    changeVisionRange()
+                    MARKERS[i].remove()
+                    MARKERS.splice(i, 1)
+                    console.log(MARKERS.length)
+                }
             }            
         }
     }
     return isMarkerOnRadius
+}
+
+const changeVisionRange = () => {
+    VISION_RANGE += 0.01
+    activeBoosters++
+    setTimeout(() => {
+        VISION_RANGE -= 0.01
+        drawVisionRange()
+        activeBoosters--
+    }, 60 * 1000)
+}
+
+const pad = (val) => {
+    let valString = val + "";
+    if (valString.length < 2){
+        return "0" + valString;
+    } else {
+        return valString;
+    }
 }

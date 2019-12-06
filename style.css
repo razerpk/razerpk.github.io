@@ -20,7 +20,7 @@ html,body {
 }
 
 .marker {
-    background-image: url('./img/flag.png');
+    background-image: url('./img/booster.png');
     background-size: cover;
     width: 50px;
     height: 50px;
@@ -28,7 +28,7 @@ html,body {
 }
 
 .userMarker {
-    background-image: url('./img/baby.png');
+    background-image: url('./img/userMarker.png');
     background-size: cover;
     width: 50px;
     height: 50px;
@@ -63,6 +63,14 @@ html,body {
     z-index: 1;
     background-image: url('./img/base_circle.png');
     border: 2px solid var(--borderColor);
+}
+#gameTime{
+    position: fixed;
+    top: 28px;
+    right: 19px;
+    z-index: 1;
+    display: block;
+    color: white;
 }
 
 /*
@@ -148,6 +156,7 @@ a[class="mapboxgl-ctrl-logo"]{
     border: 4px solid var(--borderColor);
     border-radius: 5px;
     display:none;
+    background-color: black;
 }
 
 #gameButton{
@@ -164,5 +173,5 @@ a[class="mapboxgl-ctrl-logo"]{
 }
 
 a{
-    color:red;
+    color:white;
 }
