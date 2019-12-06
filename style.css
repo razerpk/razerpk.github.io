@@ -162,3 +162,7 @@ a[class="mapboxgl-ctrl-logo"]{
     color: white;
     background-color: black;
 }
+
+a{
+    color:red;
+}

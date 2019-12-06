@@ -59,10 +59,6 @@ const startGame = () => {
         walkingPoints.features[0].geometry.coordinates.push(newUserLocation)
         map.getSource('trace').setData(walkingPoints)
 
-        setTimeout(() => {
-            clearInterval(gameLoop)
-        }, 10000)
-
     }, 500)
 }
 
