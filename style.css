@@ -107,6 +107,7 @@ a[class="mapboxgl-ctrl-logo"]{
 .mapboxgl-ctrl-bottom-right{
     display: none;
 }
+
 #copyright{
     position: fixed;
     opacity: 1;
@@ -133,16 +134,31 @@ a[class="mapboxgl-ctrl-logo"]{
     background-color: white;
     border: 4px solid var(--borderColor);
     border-radius: 5px;
+    display:none;
 }
-
 
 #legalBox{
     position: fixed;
-    top: 7vh;
-    left: 5vw;
-    right: 5vw;
-    height: 15vh;
+    bottom: 5px; right: 5px;
+    /* height: 20vh; */
+    height: auto;
+    width: auto;
+    white-space: nowrap;
     background-color: white;
     border: 4px solid var(--borderColor);
     border-radius: 5px;
+    display:none;
+}
+
+#gameButton{
+    position: fixed;
+    top: 50vh; right: 50vw;
+    width: 100px; height: 50px;
+    margin-right: -50px;
+    margin-top: -25px;
+    border: 2px solid var(--borderColor);
+    border-radius: 5px;
+    display: block;
+    color: white;
+    background-color: black;
 }

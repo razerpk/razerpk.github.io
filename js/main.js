@@ -3,19 +3,32 @@ let MARKERS = []
 let userMarker = []
 let walkingPoints = {}
 let userLocation = [29.7636, 62.6010]
+let isLocation = false
 const LatitudeInKm = 110.574
 const LongitudeInKm = 111.320
 let map = {}
 const MARKER_MIN_DISTANCE = 0.1 //km
-const PICKUP_RADIUS = 0.120 //km 0.05
+const PICKUP_RADIUS = 0.05 //km
 const ZOOM_LEVEL = 15
 let VISION_RANGE = 0.15 //km
 
 const main = async () => {
     await displayMap()
-    await addMarkersToMap()
     await addUiListeners()
-    await startGame()
+    getLocation()
+
+    document.getElementById('gameButton').onclick = function(e){ gameButtonPressed() }
+}
+
+const gameButtonPressed = () => {
+    if(isLocation){
+        document.getElementById('gameButton').style.display = 'none'
+        addMarkersToMap()
+        startGame()
+    } else {
+        console.log("REEEE")
+        getLocation()
+    }
 }
 
 const startGame = () => {
@@ -33,9 +46,12 @@ const startGame = () => {
             drawVisionRange(canvas)
         }
 
-        let newUserLocation = [userLocation[0] + 0.00005, userLocation[1] + 0.00005]
+        let newUserLocation = [userLocation[0] + 0.0002, userLocation[1] + 0.0002]
         userLocation = newUserLocation
-        map.flyTo({center: newUserLocation})
+        map.flyTo({
+            center: newUserLocation,
+            zoom: ZOOM_LEVEL
+        })
         userMarker[0]._lngLat.lng = newUserLocation[0]
         userMarker[0]._lngLat.lat = newUserLocation[1]
 
@@ -45,9 +61,9 @@ const startGame = () => {
 
         setTimeout(() => {
             clearInterval(gameLoop)
-        }, 7000)
+        }, 10000)
 
-    }, 100)
+    }, 500)
 }
 
 const drawVisionRange = (canvas) => {
@@ -65,7 +81,9 @@ const displayMap = () => {
     mapboxgl.accessToken = 'pk.eyJ1IjoiZXBlbGkiLCJhIjoiY2sydTVsdnRwMWU0YTNpcWI4bTRyY3Q5YiJ9.4PJtcpEKynaEHJk67Bz_Iw'
 
     // TODO use this on user location
-    let loc = getLocation()
+    //userLocation = getLocation()
+    //userLocation = callback()
+    //console.log("in displayMap " + userLocation)
 
     map = new mapboxgl.Map({
         container: pageMap, // container id
@@ -75,13 +93,13 @@ const displayMap = () => {
         //pitch: 40, // pitch in degrees
     })
     
-    //TODO take out //
-    //map.scrollZoom.disable();
-    // disable map rotation using right click + drag
-    //map.dragRotate.disable();
+    map.scrollZoom.disable();
+
+    //disable map rotation using right click + drag
+    map.dragRotate.disable();
  
-    // disable map rotation using touch rotation gesture
-    //map.touchZoomRotate.disableRotation();
+    //disable map rotation using touch rotation gesture
+    map.touchZoomRotate.disableRotation();
 
     let geojson = {
         type: 'FeatureCollection',
@@ -100,7 +118,7 @@ const displayMap = () => {
             type: 'Feature',
             geometry: {
             type: 'LineString',
-            coordinates: [[29.7636, 62.6010]],
+            coordinates: [],
             },
         },]
     }
@@ -145,29 +163,61 @@ const addUiListeners = () => {
 
 const showCopyrightBox = () => {
     console.log("GEGE")
-    let legalBox = document.createElement('nav')
-    legalBox.id = 'legalBox'
-    legalBox.position = 'fixed'
-    legalBox.top = '7vh'
-    legalBox.left = '5vw'
-    legalBox.right = '5vw'
-    legalBox.height = '15vh'
-    legalBox.backgroundColor = 'white'
-    legalBox.border = '4px solid var(--borderColor)'
-    legalBox.borderRadius = '5px'
+    let legalBox = document.getElementById('legalBox')
+    legalBox.style.display = 'block'
+    legalBox.innerHTML = '<br>'
+    + '<a target="_blank" href="https://www.mapbox.com/about/maps/">© Mapbox</a>'
+    + '<br>'
+    + '<a target="_blank" href="http://www.openstreetmap.org/copyright">© OpenStreetMap</a>'
+    + '<br>'
+    + '<a target="_blank" href="https://www.mapbox.com/map-feedback/">Improve this map</a>'
+    + '</p>'
+    
+    let aElems = document.getElementsByTagName('a')
+    for (let i = 0; i < aElems.length; i++)
+        aElems[i].onclick = function() { return confirm("Are you sure you want to open link in a new tab?") }
+
+    document.getElementById('copyright').style.display = "none"
 }
 
 const getLocation = () => {
     let geolocation = null
     if(window.navigator && window.navigator.geolocation){
-        return window.navigator.geolocation.watchPosition(success)
+        //return window.navigator.geolocation.getCurrentPosition(success)
+        console.log('AAYYy')
+        //geolocation = window.navigator.geolocation.getCurrentPosition(success)
+        geolocation = window.navigator.geolocation
+        console.log(geolocation)
     }
     if(geolocation){
-        //geolocation.getCurrentPosition(success)
-        //geolocation.watchPosition(success)
+        geolocation.getCurrentPosition(success)
+		
+		// call success when sensor gets new location
+		userLocation = geolocation.watchPosition(success,null,{
+			enableHighAccuracy:true,
+			maximumAge:1000
+        });
+        
+        console.log(userLocation)
+		
     }else{
-        alert("Error with geolocation!")
+        isLocation = false
     }
+}
+
+const success = (position) => {
+    if (!isLocation) {
+        map.flyTo({
+            center: [position.coords.longitude, position.coords.latitude],
+            zoom: ZOOM_LEVEL
+        })
+    }
+    
+    console.log('gps location changed :', [position.coords.latitude, position.coords.longitude]);
+    userLocation = [position.coords.longitude, position.coords.latitude]
+    
+    isLocation = true
+    return [position.coords.longitude, position.coords.latitude]
 }
 
 const addMarkersToMap = (amount = 20) => {
@@ -284,11 +334,6 @@ const kmToLat = km => km/LatitudeInKm
 const kmToLng = (km, currLat) => km/(LongitudeInKm*Math.cos(deg2rad(currLat)))
 
 const deg2rad = (deg) => deg * (Math.PI/180)
-
-const success = (position) => {
-    console.log('object :', [position.coords.latitude, position.coords.longitude]);
-    return [position.coords.latitude, position.coords.longitude]
-}
 
 // Distance per pixel math
 // Stile = C ∙ cos(latitude) / 2 ^ zoomlevel
