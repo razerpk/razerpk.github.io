@@ -46,7 +46,7 @@ const startGame = () => {
             drawVisionRange(canvas)
         }
 
-        let newUserLocation = [userLocation[0] + 0.0002, userLocation[1] + 0.0002]
+        let newUserLocation = [userLocation[0], userLocation[1]]
         userLocation = newUserLocation
         map.flyTo({
             center: newUserLocation,
@@ -194,8 +194,8 @@ const getLocation = () => {
 		
 		// call success when sensor gets new location
 		userLocation = geolocation.watchPosition(success,null,{
-			enableHighAccuracy:true,
-			maximumAge:1000
+			enableHighAccuracy: true,
+			maximumAge: 1000
         });
         
         console.log(userLocation)
@@ -211,6 +211,8 @@ const success = (position) => {
             center: [position.coords.longitude, position.coords.latitude],
             zoom: ZOOM_LEVEL
         })
+        userMarker[0]._lngLat.lng = position.coords.longitude
+        userMarker[0]._lngLat.lat = position.coords.latitude
     }
     
     console.log('gps location changed :', [position.coords.latitude, position.coords.longitude]);
