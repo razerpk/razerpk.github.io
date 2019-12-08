@@ -9,31 +9,47 @@ let isLocation = false
 const LatitudeInKm = 110.574
 const LongitudeInKm = 111.320
 
+let gameLoop
+let gameTimeLoop
 let activeBoosters = 0
 let gameTime = 0 //seconds
+let boosterTime = 0 //seconds
+let boostersPicked = 0
+let menuBoxVisible = false
+let legalBoxVisible = false
+let isAudioOn = true
+let playedOOBSound = true
 
+// Settings for game
 let VISION_RANGE = 0.15 //km
 const MARKER_MIN_DISTANCE = 0.1 //km
 const PICKUP_RADIUS = 0.05 //km
 const ZOOM_LEVEL = 15
-const PLAYAREA = 0.8 //length of one side of a square in km
+const PLAYAREA = 0.65 //distance to the edge of play area from center km
 const MARKER_AMOUNT = 30
 
+let sound = true
+
 const main = async () => {
-    await displayMap()
-    await addUiListeners()
+    canvas = document.getElementById('overlayCanvas')
+
+    displayMap()
+    addUiListeners()
     getLocation()
 
-    canvas = document.getElementById('overlayCanvas')
     drawVisionRange()
     
+    window.addEventListener('resize', function(){
+        drawVisionRange()
+    })
+
     document.getElementById('gameButton').onclick = function(e){ gameButtonPressed() }
 }
 
 const gameButtonPressed = () => {
     if(isLocation){
         document.getElementById('gameButton').style.display = 'none'
-        addMarkersToMap()
+        document.getElementById('textBox').style.display = 'none'
         startGame()
     } else {
         console.log("REEEE")
@@ -43,46 +59,248 @@ const gameButtonPressed = () => {
 
 const startGame = () => {
 
-    drawVisionRange()
-    window.addEventListener('resize', function(){
-        drawVisionRange()
-    })
+    let { overpassArea, overpassAreaValues } = addMarkersToMap()
 
-    let gameTimeLoop = setInterval(() => {
+    drawVisionRange()
+    drawPlayAreaBorders(overpassAreaValues)
+
+    gameTimeLoop = setInterval(() => {
         document.getElementById('gameTime').innerHTML = `${pad(parseInt(gameTime / 60))}:${pad(gameTime % 60)}`
         gameTime++
+        if(boosterTime > 0){
+            document.getElementById('boosterTime').innerHTML = `${pad(parseInt(boosterTime / 60))}:${pad(boosterTime % 60)}`
+            boosterTime--
+        }else{
+            document.getElementById('boosterTime').innerHTML = ""
+        }
     }, 1000)
 
-    let gameLoop = setInterval(() => {
+    gameLoop = setInterval(() => {
         isMarkersOnUserRadius()
-        if (isMarkerPickable()) {
+        if(isMarkerPickable()){
             drawVisionRange()
         }
+        arrowToNearestMarker()
 
-        let newUserLocation = [userLocation[0], userLocation[1]]
-        userLocation = newUserLocation
+        let playerOOB = outsideOfArea(overpassAreaValues, userLocation)
+        // Play out of bounds only between set interval if stays out of bounds
+        if(playerOOB && playedOOBSound){
+            playedOOBSound = false
+            setTimeout(() => {
+                playedOOBSound = true
+            }, 15 * 1000)
+            playAudio("OOB")
+        }
+
         map.flyTo({
-            center: newUserLocation,
-            zoom: ZOOM_LEVEL
+            center: userLocation,
+            zoom: ZOOM_LEVEL,
         })
-        userMarker[0]._lngLat.lng = newUserLocation[0]
-        userMarker[0]._lngLat.lat = newUserLocation[1]
+        userMarker[0]._lngLat.lng = userLocation[0]
+        userMarker[0]._lngLat.lat = userLocation[1]
 
         // Creates polyline for user locations
-        walkingPoints.features[0].geometry.coordinates.push(newUserLocation)
+        walkingPoints.features[0].geometry.coordinates.push(userLocation)
         map.getSource('trace').setData(walkingPoints)
 
     }, 500)
 }
 
-const drawVisionRange = () => {
+const arrowToNearestMarker = () => {
+
+    if (MARKERS.length === 0)
+        return console.log('no markers')
+
+    drawVisionRange()
+    let markerLoc = [MARKERS[0]._lngLat.lng, MARKERS[0]._lngLat.lat]
+    let userLoc = [userMarker[0]._lngLat.lng, userMarker[0]._lngLat.lat]
+    let closestDistance = haversineDistance(markerLoc, userLoc)
+
+    let vector = kmVector(markerLoc, userLoc)
+    let closestMarkerLoc = markerLoc
+
+    // update distance, update new closest distance and arrowvector
+    for (let i = 1; i < MARKERS.length-1; i++) {
+        markerLoc = [MARKERS[i]._lngLat.lng, MARKERS[i]._lngLat.lat]
+        let distance = haversineDistance(markerLoc, userLoc)
+
+        if (distance < closestDistance) {
+            closestMarkerLoc = markerLoc
+            closestDistance = distance
+            vector = kmVector(markerLoc, userLoc)
+        }
+    }
+
+    document.getElementById('distToBooster').style.display = 'none'
+    //draw arrow only if its far enough
+    if (closestDistance > 0.1) {
+        vector = normalizeVector(vector)    
+        vector = scaleVector(vector, 20)
+    
+        drawArrow(userLoc, closestMarkerLoc, vector, closestDistance)
+    }
+}
+
+const drawArrow = (userLoc, markerLoc, vector, distance) => {
+    distanceM = Math.round(distance*1000, 0)
+    console.log(distanceM);
+    let x, y, endX, endY
+    
+    // if userlox x location is greater than marker x location we move left
+    if (userLoc[0] > markerLoc[0]){
+        x = canvas.width / 2 - vector[0]
+        endX = x - vector[0]*3
+    } else {
+        x = canvas.width / 2 + vector[0]
+        endX = x + vector[0]*3
+    }
+    
+    if (userLoc[1] > markerLoc[1]) {
+        y = canvas.height / 2 + vector[1]
+        endY = y + vector[1]*3
+    } else {
+        y = canvas.height / 2 - vector[1]
+        endY = y - vector[1]*3
+    }
+    
+    let ctx = canvas.getContext("2d")
+    ctx.beginPath()
+    ctx.moveTo(x,y)
+    ctx.lineTo(endX, endY)
+    ctx.lineWidth = 5
+    ctx.strokeStyle = "#fd8b21"
+    ctx.closePath()
+    ctx.stroke()
+    
+    canvas_arrow(ctx, x, y, endX, endY, 10)
+
+    // Show text for distance to closest marker
+    showDistanceToBooster( (x+(endX-x)/2), (y+(endY-y)/2), distanceM )
+}
+
+// Distance in on top of the arrow
+const showDistanceToBooster = (x, y, dist) => {
+    let distToBooster = document.getElementById('distToBooster')
+    distToBooster.style.display = 'block'
+    distToBooster.innerHTML =`${dist}m`
+    
+    distToBooster.style.left = `${x}px`
+    distToBooster.style.top = `${y}px`
+
+    distToBooster.style.marginLeft = `${distToBooster.offsetWidth*(-1)/2}px`
+    distToBooster.style.marginTop = `${distToBooster.offsetHeight*(-1)/2}px`
+}
+
+// Triangle to the end of the vector
+const canvas_arrow = (context, fromx, fromy, tox, toy, r) =>{
+    let x_center = tox
+    let y_center = toy
+    let angle, x, y
+
+    context.beginPath()
+
+    angle = Math.atan2(toy-fromy, tox-fromx)
+    x = r*Math.cos(angle) + x_center
+    y = r*Math.sin(angle) + y_center
+
+    context.moveTo(x, y)
+
+    angle += (1/3)*(2*Math.PI)
+    x = r*Math.cos(angle) + x_center
+    y = r*Math.sin(angle) + y_center
+
+    context.lineTo(x, y)
+
+    angle += (1/3)*(2*Math.PI)
+    x = r*Math.cos(angle) + x_center
+    y = r*Math.sin(angle) + y_center
+
+    context.lineTo(x, y)
+
+    context.closePath()
+    context.fillStyle = "#fd8b21"
+    context.fill()
+}
+
+const kmVector = (markerLoc,userLoc) => {
+    kmX = Math.abs(lngToKm(markerLoc[0], markerLoc[1]) - lngToKm(userLoc[0], markerLoc[1]))
+    kmY = Math.abs(latToKm(markerLoc[1]) - latToKm(userLoc[1]))
+    return [kmX, kmY]
+}
+
+function scaleVector(vector, scaler){
+    let newV=[
+        vector[0]*scaler,
+        vector[1]*scaler
+    ]
+    return newV;
+}
+
+function normalizeVector(vector){
+    var magn=getMagnitude(vector);
+    var newV=[
+        vector[0]/magn,
+        vector[1]/magn
+    ];
+    return newV;
+}
+
+function getMagnitude(vector){
+    return Math.sqrt(vector[0]*vector[0]+vector[1]*vector[1]);
+}
+
+const drawVisionRange = (vision = VISION_RANGE) => {
 
     canvas.height = window.innerHeight
     canvas.width = window.innerWidth 
  
     fillCanvas("black")
     let pixelInKm = kmDistancePerPixel(userLocation[1])
-    clearCircleArea(VISION_RANGE/pixelInKm)
+    clearCircleArea(vision/pixelInKm)
+}
+
+const drawPlayAreaBorders = (overpassAreaValues) => {
+    //TODO remove layer+source
+    if (map.getSource('play-area')){
+        map.removeLayer('area-boundary')
+        map.removeSource('play-area')
+    }
+
+    let south = overpassAreaValues[0]
+    let west = overpassAreaValues[1]
+    let north = overpassAreaValues[2]
+    let east = overpassAreaValues[3]
+
+    map.addSource("play-area", {
+        "type": "geojson",
+        "data": {
+            "type": "FeatureCollection",
+            "features": [{
+                "type": "Feature",
+                "geometry": {
+                    "type": "Polygon",
+                    "coordinates": [
+                    [
+                        [west[0], north[1]],
+                        [west[0], south[1]],
+                        [east[0], south[1]],
+                        [east[0], north[1]],
+                        [west[0], north[1]]
+                    ]
+                ]}
+            }]
+        }
+    })
+
+    map.addLayer({
+        "id": "area-boundary",
+        "type": "line",
+        "source": "play-area",
+        "paint": {
+            "line-color": "#f7f300",
+            "line-width": 2
+        },
+    })
 }
 
 const displayMap = () => {
@@ -153,40 +371,117 @@ const displayMap = () => {
 
 //Listeners for UI elements
 const addUiListeners = () => {
-    //let copyright = document.getElementById('copyright')
-    document.getElementById('copyright').onclick = function(e){ showCopyrightBox() }
-    document.getElementById('legalBox').onclick = function(e){ hideLegalBox() }
+    document.getElementById('copyright').onclick = function(e){ showLegalBox() }
+    document.getElementById('menu').onclick = function(e){ showMenuBox() }
+    // Hide menu and/or legal info if canvas is clicked
+    canvas.onclick = function(e){
+        if (menuBoxVisible)
+            hideMenuBox()
+        if (legalBoxVisible)
+            hideLegalBox()
+    }
 }
 
-const hideLegalBox = () => {
-    document.getElementById('legalBox').style.display = 'none'
-    document.getElementById('copyright').style.display = 'block'
-}
+const showMenuBox = () => {
+    menuBoxVisible = true
+    let menuBox = document.getElementById('menuBox')
+    //menuBox.style.display = 'block'
+    menuBox.innerHTML =
+    `
+    <table id='menuTable'>
+        <tr>
+            <td>
+                Sound
+                <label class="switch">
+                    <input id='audioChange' type="checkbox" checked>
+                    <span class="slider round"></span>
+                </label>
+            </td>
+        </tr>
+        <tr><td>Boosters picked: ${boostersPicked} / ${MARKERS.length}</td></tr>
+        <tr><td>Distance travelled: to-do</td></tr>
+    </table>
+    `
+    // To change audio setting on click on the slider
+    document.getElementById('audioChange').onclick = function(e){ changeAudioSetting() }
 
-const showCopyrightBox = () => {
-    console.log("GEGE")
-    let legalBox = document.getElementById('legalBox')
-    legalBox.style.display = 'block'
-    legalBox.innerHTML = `<br>
-    <a target="_blank" href="https://www.mapbox.com/about/maps/">© Mapbox</a>
-    <br>
-    <a target="_blank" href="http://www.openstreetmap.org/copyright">© OpenStreetMap</a>
-    <br>
-    <a target="_blank" href="https://www.mapbox.com/map-feedback/">Improve this map</a>
-    </p>`
+    // legalBox visible smoothly
+    menuBox.style.opacity = 1
+    menuBox.style.height = `auto`
+    menuBox.style.width = `auto`
+
+    // Don't cover game logo
+    let gameLogo = document.getElementById('gameLogo')
+    menuBox.style.maxWidth = `${gameLogo.offsetLeft - gameLogo.offsetWidth/2}px`
     
+    // Smooth hiding of the copyright logo
+    document.getElementById('menu').style.opacity = 0
+}
+
+const changeAudioSetting = () => {
+    if(isAudioOn)
+        isAudioOn = false
+    else
+        isAudioOn = true
+}
+
+const hideMenuBox = () => {
+    menuBoxVisible = false
+    let menuBox = document.getElementById('menuBox')
+    menuBox.style.opacity = 0
+    // Smooth fade for box
+    setTimeout(() => {
+        menuBox.style.height = 0
+        menuBox.style.width = 0
+        menuBox.innerHTML = ""
+    }, 1 * 1000)
+    // Smooth visibility for the menu
+    document.getElementById('menu').style.opacity = 1
+}
+
+const showLegalBox = () => {
+    legalBoxVisible = true
+    let legalBox = document.getElementById('legalBox')
+    legalBox.innerHTML = `
+    <a target="_blank" class="legalLink" href="https://www.mapbox.com/about/maps/">© Mapbox</a>
+    <br>
+    <a target="_blank" class="legalLink" href="http://www.openstreetmap.org/copyright">© OpenStreetMap</a>
+    <br>
+    <a target="_blank" class="legalLink" href="https://www.mapbox.com/map-feedback/">Improve this map</a>
+    </p>`
+
+    // legalBox visible smoothly
+    legalBox.style.opacity = 1
+    legalBox.style.height = `auto`
+    legalBox.style.width = `auto`
+    
+    // Confirmations for all the links
     let aElems = document.getElementsByTagName('a')
     for (let i = 0; i < aElems.length; i++)
         aElems[i].onclick = function() { return confirm("Are you sure you want to open link in a new tab?") }
 
-    document.getElementById('copyright').style.display = "none"
+    // Smooth hiding of the copyright logo
+    document.getElementById('copyright').style.opacity = 0
+}
+
+// Smooth hiding of all elements
+const hideLegalBox = () => {
+    legalBoxVisible = false
+    let legalBox = document.getElementById('legalBox')
+    legalBox.style.opacity = 0
+    // Smooth fade for box
+    setTimeout(() => {
+        legalBox.style.height = 0
+        legalBox.style.width = 0
+    }, 1 * 1000)
+    // Smooth visibility for the copyright logo
+    document.getElementById('copyright').style.opacity = 1
 }
 
 const getLocation = () => {
     let geolocation = null
     if(window.navigator && window.navigator.geolocation){
         geolocation = window.navigator.geolocation
-        console.log(geolocation)
     }
     if(geolocation){
         geolocation.getCurrentPosition(success)
@@ -211,8 +506,7 @@ const success = (position) => {
         userMarker[0]._lngLat.lng = position.coords.longitude
         userMarker[0]._lngLat.lat = position.coords.latitude
     }
-    
-    console.log('gps location changed :', [position.coords.latitude, position.coords.longitude]);
+
     userLocation = [position.coords.longitude, position.coords.latitude]
     
     isLocation = true
@@ -261,9 +555,18 @@ const addMarkersToMap = () => {
                 }
             }
         }
+        // TODO REMOVE
+        //let marker = addMarkerToMap([userMarker[0]._lngLat.lng + 0.001, userMarker[0]._lngLat.lat], 'marker')      
+        //marker.endPoint = true
+        //MARKERS = [...MARKERS, marker]
+        //
+
+        MARKERS.forEach(marker => Math.random() < 0.2 ? marker.superbooster = true : marker)
         MARKERS[Math.floor(Math.random()*MARKERS.length)].endPoint = true
         console.log('markers placed ', MARKERS.length)
     }
+
+    return {overpassArea, overpassAreaValues}
 }
 
 const positionIsGood = (element, overpassAreaValues) => {
@@ -288,10 +591,10 @@ const positionIsGood = (element, overpassAreaValues) => {
 }
 
 const outsideOfArea = (overpassAreaValues, location) => {
-    south = overpassAreaValues[0]
-    west = overpassAreaValues[1]
-    north = overpassAreaValues[2]
-    east = overpassAreaValues[3]
+    let south = overpassAreaValues[0]
+    let west = overpassAreaValues[1]
+    let north = overpassAreaValues[2]
+    let east = overpassAreaValues[3]
     
     if (location[1] < south[1] || location[1] > north[1]) {
         return true
@@ -330,7 +633,11 @@ function httpGetAsync(url, callback){
 
 const kmToLat = km => km/LatitudeInKm 
 
+const latToKm = lat => LatitudeInKm * lat
+
 const kmToLng = (km, currLat) => km/(LongitudeInKm*Math.cos(deg2rad(currLat)))
+
+const lngToKm = (lng, currLat) => (LongitudeInKm*Math.cos(deg2rad(currLat))) * lng
 
 const deg2rad = (deg) => deg * (Math.PI/180)
 
@@ -419,9 +726,7 @@ const isMarkersOnUserRadius = () => {
             // distance between usermarker, MARKERS[i]
             if (haversineDistance([MARKERS[i]._lngLat.lng, MARKERS[i]._lngLat.lat], [userMarker[0]._lngLat.lng, userMarker[0]._lngLat.lat]) < VISION_RANGE) {
                 MARKERS[i]._element.hidden = false
-                let audio = new Audio('./sounds/bruh.mp3')
-                audio.loop = false
-                audio.play()
+                playAudio("bruh")
             }
         }
     }
@@ -436,20 +741,24 @@ const isMarkerPickable = () => {
         if (MARKERS[i]._element.hidden === false) {
             // distance between usermarker, MARKERS[i]
             if (haversineDistance([MARKERS[i]._lngLat.lng, MARKERS[i]._lngLat.lat], [userMarker[0]._lngLat.lng, userMarker[0]._lngLat.lat]) < PICKUP_RADIUS) {
-                console.log('im here deleting marker ',  MARKERS[i])
+                console.log('deleting marker ',  MARKERS[i])
+
+                boostersPicked++
+                // Update values in menu if visible
+                if (menuBoxVisible)
+                    showMenuBox()
+                
                 if (MARKERS[i].endPoint) {
-                    let audio = new Audio('./sounds/end.mp3')
-                    audio.loop = false
-                    audio.play()         
-                } else {
-                    let audio = new Audio('./sounds/YouGotABooster.mp3')
-                    audio.loop = false
-                    audio.play()
-                    isMarkerOnRadius = true
-                    changeVisionRange()
+                    playAudio("end")
                     MARKERS[i].remove()
                     MARKERS.splice(i, 1)
-                    console.log(MARKERS.length)
+                    endGameScreen()
+                } else {
+                    playAudio("YouGotABooster")
+                    isMarkerOnRadius = true
+                    changeVisionRange(MARKERS[i])
+                    MARKERS[i].remove()
+                    MARKERS.splice(i, 1)
                 }
             }            
         }
@@ -457,11 +766,53 @@ const isMarkerPickable = () => {
     return isMarkerOnRadius
 }
 
-const changeVisionRange = () => {
-    VISION_RANGE += 0.01
+const endGameScreen = () => {
+
+    document.getElementById('textBox').style.display = 'block'
+    document.getElementById('gameButton').style.display = 'block'
+    let textBox = document.getElementById('textBox')
+    textBox.innerHTML = `
+    Your result: <br>
+    <br>Total time: ${pad(parseInt(gameTime / 60))}:${pad(gameTime % 60)}
+    <br>Boosters picked: ${boostersPicked}
+    <br>Total travel length: to-do
+    `
+    // Center textBox
+    textBox.style.marginLeft = `${textBox.offsetWidth*(-1)/2}px`
+
+    gameTime = 0
+    boosterTime = 0 //seconds
+    boostersPicked = 0
+    activeBoosters = 0
+    MARKERS.map(marker => marker.remove())
+    MARKERS = []
+    VISION_RANGE = 0.15 //km
+    clearInterval(gameLoop)
+    clearInterval(gameTimeLoop)
+    walkingPoints.features[0].geometry.coordinates = []
+    document.getElementById('gameTime').innerHTML = `${pad(parseInt(gameTime / 60))}:${pad(gameTime % 60)}`
+    document.getElementById('boosterTime').innerHTML = ''
+    document.getElementById('distToBooster').style.display = 'none'
+    drawVisionRange(0)
+
+    //TODO ZOOOOOOOOOOMER OUT MAP
+    map.flyTo({
+        center: userLocation,
+        zoom: 10
+    })
+}
+
+const changeVisionRange = (marker) => {
+    let visionBoost = 0.05
+    if(marker.superbooster){
+        visionBoost = 0.1
+        console.log("YOU GOT SUPER BOOSTER")
+    }
+    VISION_RANGE += visionBoost
+    boosterTime = 60
     activeBoosters++
     setTimeout(() => {
-        VISION_RANGE -= 0.01
+        VISION_RANGE -= visionBoost
         drawVisionRange()
         activeBoosters--
     }, 60 * 1000)
@@ -473,5 +824,13 @@ const pad = (val) => {
         return "0" + valString;
     } else {
         return valString;
+    }
+}
+
+const playAudio = (filename) => {
+    if (isAudioOn){
+        let audio = new Audio(`./sounds/${filename}.mp3`)
+        audio.loop = false
+        audio.play()
     }
 }

@@ -9,14 +9,13 @@ html,body {
     height: 100%;
 }
 
+/*
+    RELATED TO OVERPASS MAP
+*/
 #map { 
     position: fixed;
     top:0; bottom:0;
     width: 100%;
-}
-
-#overlayCanvas { 
-    position: fixed;
 }
 
 .marker {
@@ -30,16 +29,38 @@ html,body {
 .userMarker {
     background-image: url('./img/userMarker.png');
     background-size: cover;
-    width: 50px;
-    height: 50px;
+    width: 30px;
+    height: 30px;
     border-radius: 50%;
 }
 
 /*
-    <nav id='menu' class='ui'></nav>
-    <nav id='playTime' class='ui'></nav>
+    CANVAS
+*/
+#overlayCanvas { 
+    position: fixed;
+}
+
+/*
+    UI ELEMENTS
 */
 
+/* Game start button */
+#gameButton{
+    position: fixed;
+    top: 50vh; right: 50vw;
+    width: 120px; height: 70px;
+    margin-right: -60px;
+    margin-top: -35px;
+    border: 2px solid var(--borderColor);
+    border-radius: 5px;
+    display: block;
+    color: white;
+    background-color: black;
+    font-size: x-large;
+}
+
+/* For top left and right round elements */
 .ui {
     position: fixed;
     opacity: 1;
@@ -55,8 +76,44 @@ html,body {
     left: 10px;
     background-image: url('./img/menu2.png');
     border: 2px solid var(--borderColor);
+    /* Smooth visibility */
+    transition: opacity 1s ease-out;
+}
+#menuBox{
+    position: fixed;
+    top: 5px; left: 5px;
+
+    /*white-space: nowrap;*/
+    word-wrap: break-word;
+    overflow: auto;
+    font-size: large;
+
+    color: white;
+    border: 4px solid var(--borderColor);
+    border-radius: 5px;
+    display: block;
+    background-color: black;
+    text-align: left;
+    /* Smooth visibility */
+    opacity: 0;
+    height: 0;
+    width: 0;
+    transition: opacity 1s ease-out;
+}
+#menuBox > table{
+    display: block;
+    /*overflow: scroll;*/
+}
+#menuBox > table > tbody > tr > td{
+    border-bottom: 2px solid white;
+    padding: 5px 0 5px 0;
+}
+/* Bottom line for all table cells except last one */
+#menuBox > table > tbody > tr:last-of-type > td{
+    border-bottom: none;
 }
 
+/* Base circle on top of time game time is displayed */
 #playTime {
     top: 10px;
     right: 10px;
@@ -64,17 +121,35 @@ html,body {
     background-image: url('./img/base_circle.png');
     border: 2px solid var(--borderColor);
 }
+/* Game time */
 #gameTime{
     position: fixed;
     top: 28px;
-    right: 19px;
+    right: 18px;
     z-index: 1;
     display: block;
     color: white;
 }
+#boosterTime{
+    position: fixed;
+    top: 68px;
+    right: 18px;
+    z-index: 1;
+    display: block;
+    color: red;
+}
+
+#distToBooster{
+    display: none;
+    position: fixed;
+    color: white;
+    border: 2px solid var(--borderColor);
+    background-color: black;
+    border-radius: 5px;
+}
 
 /*
-    <nav id='gameLogo'></nav>
+    GAME LOGO AT TOP MIDDLE
 */
 #gameLogo{
     position: fixed;
@@ -91,7 +166,9 @@ html,body {
     border-radius: 100%;
 }
 
-/* creates on top of canvas */
+/*
+    MAPBOX LOGO AT BOTTOM LEFT
+*/
 #mapboxLogo {
     position: fixed;
     opacity: 1;
@@ -111,11 +188,13 @@ a[class="mapboxgl-ctrl-logo"]{
 }
 
 
-/* TODO: add attribution links to copyright button from readme */
+/*
+    COPYRIGHT ELEMENTS AT BOTTOM RIGHT OF THE UI
+*/
 .mapboxgl-ctrl-bottom-right{
     display: none;
 }
-
+/* Copyright logo */
 #copyright{
     position: fixed;
     opacity: 1;
@@ -127,7 +206,39 @@ a[class="mapboxgl-ctrl-logo"]{
     background-size: 100%;
     border: 2px solid var(--borderColor);
     border-radius: 100%;
+    /* Smooth visibility */
+    opacity: 1;
+    transition: opacity 1s ease-out;
 }
+/* Legal info in a box */
+#legalBox{
+    position: fixed;
+    bottom: 5px; right: 5px;
+    white-space: nowrap;
+    background-color: white;
+    border: 4px solid var(--borderColor);
+    border-radius: 5px;
+    background-color: black;
+    text-align: center;
+    /* Smooth visibility */
+    opacity: 0;
+    height: 0;
+    width: 0;
+    transition: opacity 1s ease-out;
+}
+/* Links in legal box */
+a[class="legalLink"]{
+    color:white;
+    text-decoration: none;
+    display:inline-block;
+    padding: 5px;
+    font-size: large;
+}
+/* Separate better from upper border */
+a[class="legalLink"]:first-of-type{
+    margin-top: 15px;
+}
+
 
 /*
     <nav id='textBox'></nav>
@@ -135,43 +246,88 @@ a[class="mapboxgl-ctrl-logo"]{
 
 #textBox{
     position: fixed;
-    bottom: 7vh;
-    left: 5vw;
-    right: 5vw;
-    height: 15vh;
-    background-color: white;
-    border: 4px solid var(--borderColor);
-    border-radius: 5px;
-    display:none;
-}
-
-#legalBox{
-    position: fixed;
-    bottom: 5px; right: 5px;
-    /* height: 20vh; */
-    height: auto;
-    width: auto;
+    word-wrap: normal;
     white-space: nowrap;
-    background-color: white;
+    overflow: auto;
+    bottom: 7vh;
+
+    left: 50vw;
+    /*right: 50vw;*/
+    height: auto;
+    max-height: 30vh;
+    width: auto;
+
+    padding: 2px;
+
+    background-color: black;
+    font-size: large;
+    color: white;
     border: 4px solid var(--borderColor);
     border-radius: 5px;
     display:none;
-    background-color: black;
 }
 
-#gameButton{
-    position: fixed;
-    top: 50vh; right: 50vw;
-    width: 100px; height: 50px;
-    margin-right: -50px;
-    margin-top: -25px;
-    border: 2px solid var(--borderColor);
-    border-radius: 5px;
-    display: block;
-    color: white;
-    background-color: black;
+
+/*
+    TOGGLE SWITCH
+*/
+
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 40px;
+    height: 20px;
+}
+  
+.switch input { 
+    opacity: 0;
+    width: 0;
+    height: 0;
 }
 
-a{
-    color:white;
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    -webkit-transition: .4s;
+    transition: .4s;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 16px;
+    width: 16px;
+    left: 3px;
+    bottom: 2px;
+    background-color: white;
+    -webkit-transition: .4s;
+    transition: .4s;
+}
+
+input:checked + .slider {
+    background-color: var(--borderColor);
+}
+
+input:focus + .slider {
+    box-shadow: 0 0 1px var(--borderColor);
+}
+
+input:checked + .slider:before {
+    -webkit-transform: translateX(18px);
+    -ms-transform: translateX(18px);
+    transform: translateX(18px);
+}
+
+/* Rounded sliders */
+.slider.round {
+    border-radius: 20px;
+}
+
+.slider.round:before {
+    border-radius: 50%;
 }
