@@ -45,6 +45,41 @@ html,body {
     UI ELEMENTS
 */
 
+#selectGameArea{
+    position: fixed;
+
+    padding: 5px;
+    width: auto; height: auto;
+
+    border: 2px solid var(--borderColor);
+    border-radius: 5px;
+    display: block;
+    color: white;
+    background-color: black;
+    text-align: left;
+    font-size: large;
+
+    overflow: scroll;
+
+    line-height: 2;
+}
+#selectGameArea > input[type="radio"] {
+    -webkit-appearance: none;
+    background-color: black;
+    border: 2px solid var(--borderColor);
+    border-radius: 100%;
+    width: 100%;
+    display: inline-block;
+    position: relative;
+    width: 25px;
+    height: 25px;
+    margin-bottom: -6px;
+}
+#selectGameArea > input[type="radio"]:checked {
+    background-color: var(--borderColor);
+    outline: none;
+}
+
 /* Game start button */
 #gameButton{
     position: fixed;
@@ -58,6 +93,7 @@ html,body {
     color: white;
     background-color: black;
     font-size: x-large;
+    outline: none;
 }
 
 /* For top left and right round elements */
@@ -79,7 +115,7 @@ html,body {
     /* Smooth visibility */
     transition: opacity 1s ease-out;
 }
-#menuBox{
+#menuBox {
     position: fixed;
     top: 5px; left: 5px;
 
@@ -100,17 +136,42 @@ html,body {
     width: 0;
     transition: opacity 1s ease-out;
 }
-#menuBox > table{
+#menuBox > table {
     display: block;
     /*overflow: scroll;*/
 }
-#menuBox > table > tbody > tr > td{
+#menuBox > table > tbody > tr > td {
     border-bottom: 2px solid white;
     padding: 5px 0 5px 0;
 }
 /* Bottom line for all table cells except last one */
-#menuBox > table > tbody > tr:last-of-type > td{
+#menuBox > table > tbody > tr:last-of-type > td {
     border-bottom: none;
+}
+
+#activeGameInfo {
+    position: fixed;
+    /* top 68px */
+    top: 68px;
+    right: 5px;
+
+    /*white-space: nowrap;*/
+    word-wrap: break-word;
+    overflow: auto;
+    font-size: small;
+
+    color: white;
+    border: 2px solid var(--borderColor);
+    border-radius: 5px;
+    display: none;
+    background-color: black;
+    text-align: center;
+    padding: 5px;
+    /* For smooth visibility -> next values to 0 */
+    opacity: 1;
+    height: auto;
+    width: 50px;
+    transition: opacity 1s ease-out;
 }
 
 /* Base circle on top of time game time is displayed */
@@ -118,7 +179,8 @@ html,body {
     top: 10px;
     right: 10px;
     z-index: 1;
-    background-image: url('./img/base_circle.png');
+    /*background-image: url('./img/base_circle.png');*/
+    background-color: black;
     border: 2px solid var(--borderColor);
 }
 /* Game time */
@@ -133,10 +195,17 @@ html,body {
 #boosterTime{
     position: fixed;
     top: 68px;
-    right: 18px;
+    right: 15px;
     z-index: 1;
-    display: block;
+    display: none;
     color: red;
+    background-color: black;
+    border: 2px solid var(--borderColor);
+    padding: 2px;
+    border-radius: 5px;
+    height: auto;
+    text-align: center;
+    font-weight: bold;
 }
 
 #distToBooster{
@@ -187,6 +256,26 @@ a[class="mapboxgl-ctrl-logo"]{
     display: none;
 }
 
+/*
+    EXPAND BUTTON FOR ZOOM LEVEL
+*/
+#expand{
+    position: fixed;
+    bottom: 10px;
+    left: 50vw;
+    margin-left: -25px;
+    opacity: 1;
+    background-size: 75%;
+    background-image: url('./img/expand.png');
+    background-position: center;
+    background-repeat: no-repeat;
+    background-color: black;
+    display: block;
+    width: 50px;
+    height: 50px;
+    border-radius: 100%;
+    border: 2px solid var(--borderColor);
+}
 
 /*
     COPYRIGHT ELEMENTS AT BOTTOM RIGHT OF THE UI
@@ -249,12 +338,12 @@ a[class="legalLink"]:first-of-type{
     word-wrap: normal;
     white-space: nowrap;
     overflow: auto;
-    bottom: 7vh;
+    bottom: 70px;
 
     left: 50vw;
     /*right: 50vw;*/
     height: auto;
-    max-height: 30vh;
+    max-height: 20vh;
     width: auto;
 
     padding: 2px;

@@ -20,3 +20,19 @@ What else is missing:
 -----------------------------------------------------------------------------------------------------------------------------
 
 Mapbox includes this built-in information button for your convenience. If you decide not to use it, you must include attribution on the map in a text format. The attribution must include © Mapbox as a link to https://www.mapbox.com/about/maps/, "© OpenStreetMap" as a link to http://www.openstreetmap.org/copyright, and "Improve this map" as a link to https://www.mapbox.com/map-feedback/. If you choose to use one of our Satellite styles, you must also include © DigitalGlobe as a link to https://www.digitalglobe.com/. Note that in the future, Mapbox may update the information on the attribution panel and require additional attribution to our suppliers.
+
+
+  // fetch saved gamedata on page load
+    const gameData = JSON.parse(window.localStorage.getItem('gameData'))
+    if (gameData !== null){
+      gameTime = gameData.buildings
+      props.initializeResources(gameData.resources)
+      props.initializeUserStats(gameData.userStats)
+      props.initializeMissions(gameData.missions)
+    }
+
+    window.localStorage.setItem('gameData', JSON.stringify({
+    userStats,
+    resources,
+    buildings
+  */
