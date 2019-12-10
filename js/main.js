@@ -502,6 +502,10 @@ const hideMenuAndLegalIfVisible = () => {
 const showMenuBox = () => {
     menuBoxVisible = true
     let menuBox = document.getElementById('menuBox')
+    let checked = ""
+    if(isAudioOn)
+        checked = "checked"
+
     menuBox.innerHTML =
     `
     <table id='menuTable'>
@@ -509,7 +513,7 @@ const showMenuBox = () => {
             <td>
                 Sound
                 <label class="switch">
-                    <input id='audioChange' type="checkbox" checked>
+                    <input id='audioChange' type="checkbox" ${checked}>
                     <span class="slider round"></span>
                 </label>
             </td>
