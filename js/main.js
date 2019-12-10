@@ -12,9 +12,12 @@ const LongitudeInKm = 111.320
 let TRAVELED_DISTANCE = 0
 let gameLoop
 let gameTimeLoop
+let expandTimeout
+let changeVisionRangeTimeOut
 let activeBoosters = 0
 let gameTime = 0 //seconds
 let boosterTime = 0 //seconds
+let zoomOutTime = 0 //seconds
 let boostersPicked = 0
 let menuBoxVisible = false
 let legalBoxVisible = false
@@ -78,10 +81,11 @@ const startGame = () => {
     drawCanvas()
 
     gameTimeLoop = setInterval(() => {
-        updateGameTime()
+        updateGameTimes()
     }, 1000)
 
     gameLoop = setInterval(() => {
+        //console.log(currentZoomLevel)
         isMarkersOnUserRadius()
         if(isMarkerPickable()){
             drawCanvas()
@@ -297,7 +301,7 @@ const drawArrow = (userLoc, markerLoc, vector, distance) => {
     ctx.fill()
 }
 
-// Distance in on top of the arrow
+// Distance in box on top of the arrow
 const showDistanceToBooster = (x, y, dist) => {
     let distToBooster = document.getElementById('distToBooster')
     distToBooster.style.display = 'block'
@@ -430,7 +434,7 @@ const success = (position) => {
     return [position.coords.longitude, position.coords.latitude]
 }
 
-const updateGameTime = () => {
+const updateGameTimes = () => {
     document.getElementById('gameTime').innerHTML = `${pad(parseInt(gameTime / 60))}:${pad(gameTime % 60)}`
     gameTime++
     let boosterTimeElem = document.getElementById('boosterTime')
@@ -440,10 +444,18 @@ const updateGameTime = () => {
             ${pad(parseInt(boosterTime / 60))}:${pad(boosterTime % 60)}`
         boosterTimeElem.style.display = 'block'
         boosterTime--
-    }else if(activeBoosters === 0) {
+    }else if(activeBoosters === 0)
         boosterTimeElem.style.display = 'none'
-        //boosterTimeElem.innerHTML = ''
+    
+    let expandTextCircle = document.getElementById('expandTextCircle')
+    if (zoomOutTime > 0) {
+        expandTextCircle.style.display = 'block'
+        expandTextCircle.innerHTML = `
+        <div id="expandTime">${pad(parseInt(zoomOutTime / 60))}:${pad(zoomOutTime % 60)}</div>`
+        zoomOutTime--
     }
+    else if (zoomOutTime === 0) 
+        expandTextCircle.style.display = 'none'
 }
 
 const updateActiveGameInfo = () => {
@@ -603,18 +615,17 @@ const expandMap = () => {
     currentZoomLevel -= DEFAULT_MAP_ZOOM - expandedZoomLevel
     document.getElementById('expand').style.display = 'none'
     isExpandOn = true
+    zoomOutTime = 10
         
     setTimeout(() => {
         userMarker[0]._element.hidden = true
     }, 300)
     
-    setTimeout(() => {
-
+    expandTimeout = setTimeout(() => {
         currentZoomLevel += DEFAULT_MAP_ZOOM - expandedZoomLevel
         document.getElementById('expand').style.display = 'block'
         userMarker[0]._element.hidden = false
         isExpandOn = false
-
     }, 10 * 1000)
 }
 
@@ -871,19 +882,21 @@ const isMarkerPickable = () => {
                     MARKERS.splice(i, 1)
                     endGameScreen(true)
                 } else {
-                    playAudio("YouGotABooster")
+                    //playAudio("YouGotABooster")
                     changeVisionRange(MARKERS[i])
                     
                     // Create message for booster pickup
                     let boosterMsg 
                     
                     if (MARKERS[i].superbooster){
+                        playAudio("YouGotASuperBooster")
                         boosterMsg = `
                         You got a super booster
                         <br><br>
                         Vision radius grew 100 meters
                         `
                     } else {
+                        playAudio("YouGotABooster")
                         boosterMsg = `
                         You got a booster
                         <br><br>
@@ -963,10 +976,18 @@ Gamegoal:
 Find the end point among other boosters
 
 Boosters give temporary bonuses for 60s:
-- Booster 50m vision boost
-- Super booster 100m vision boost
+- Booster: 50m vision boost
+- Super: booster 100m vision boost
 
-Expand button zooms out the map for 10 seconds - located at the bottom of screen 
+Arrow inside vision range shows distance and direction to closest booster
+
+Expand button zooms out the map for 10 seconds - located at the bottom of screen
+
+Game area sizes:
+- Small: 600m x 600m
+- Normal: 800m x 800m
+- Large: 1000m x 1000m
+- XL: 1200m x 1200m
 `)
 }
 
@@ -974,6 +995,11 @@ Expand button zooms out the map for 10 seconds - located at the bottom of screen
 const endGameScreen = (endGame) => {
 
     hideMenuAndLegalIfVisible()
+
+    // These 3 need to be here!
+    clearInterval(expandTimeout)
+    userMarker[0]._element.hidden = false
+    clearInterval(changeVisionRangeTimeOut)
 
     currentZoomLevel = expandedZoomLevel
     map.flyTo({
@@ -1004,6 +1030,8 @@ const endGameScreen = (endGame) => {
     boosterTime = 0 //seconds
     boostersPicked = 0
     activeBoosters = 0
+    zoomOutTime = 0
+    isExpandOn = false
     MARKERS.map(marker => marker.remove())
     MARKERS = []
     VISION_RANGE = 0.15 //km
@@ -1014,6 +1042,7 @@ const endGameScreen = (endGame) => {
     document.getElementById('boosterTime').style.display = 'none'
     document.getElementById('distToBooster').style.display = 'none'
     document.getElementById('expand').style.display = 'none'
+    document.getElementById('expandTextCircle').style.display = 'none'
 
     setTimeout(() => {
         document.getElementById('activeGameInfo').style.display = 'none'
@@ -1035,7 +1064,7 @@ const changeVisionRange = (marker) => {
     currentZoomLevel -= zoomBoost
     boosterTime = 60
     activeBoosters++
-    setTimeout(() => {
+    changeVisionRangeTimeOut = setTimeout(() => {
         VISION_RANGE -= visionBoost
         currentZoomLevel += zoomBoost
         drawCanvas()
