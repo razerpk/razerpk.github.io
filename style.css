@@ -45,11 +45,21 @@ html,body {
     UI ELEMENTS
 */
 
+button {
+    border: 2px solid var(--borderColor);
+    border-radius: 5px;
+    color: white;
+    background-color: black;
+}
+
 #selectGameArea{
     position: fixed;
-
+    bottom: 50vh;left: 50vw;
     padding: 5px;
     width: auto; height: auto;
+
+    /* gameButton height/2 + 10px padding */
+    margin-bottom: 45px;
 
     border: 2px solid var(--borderColor);
     border-radius: 5px;
@@ -58,10 +68,9 @@ html,body {
     background-color: black;
     text-align: left;
     font-size: large;
-
-    overflow: scroll;
-
     line-height: 2;
+
+    overflow: auto;
 }
 #selectGameArea > input[type="radio"] {
     -webkit-appearance: none;
@@ -84,8 +93,8 @@ html,body {
 #gameButton{
     position: fixed;
     top: 50vh; right: 50vw;
-    width: 120px; height: 70px;
-    margin-right: -60px;
+    width: 160px; height: 70px;
+    margin-right: -80px;
     margin-top: -35px;
     border: 2px solid var(--borderColor);
     border-radius: 5px;
@@ -151,13 +160,13 @@ html,body {
 
 #activeGameInfo {
     position: fixed;
-    /* top 68px */
     top: 68px;
     right: 5px;
+    width: 58px;
+    height: auto;
 
-    /*white-space: nowrap;*/
     word-wrap: break-word;
-    overflow: auto;
+    overflow: hidden;
     font-size: small;
 
     color: white;
@@ -166,12 +175,7 @@ html,body {
     display: none;
     background-color: black;
     text-align: center;
-    padding: 5px;
-    /* For smooth visibility -> next values to 0 */
-    opacity: 1;
-    height: auto;
-    width: 50px;
-    transition: opacity 1s ease-out;
+    padding: 3px 1px 3px 1px;
 }
 
 /* Base circle on top of time game time is displayed */
@@ -195,7 +199,7 @@ html,body {
 #boosterTime{
     position: fixed;
     top: 68px;
-    right: 15px;
+    right: 14px;
     z-index: 1;
     display: none;
     color: red;
@@ -270,7 +274,7 @@ a[class="mapboxgl-ctrl-logo"]{
     background-position: center;
     background-repeat: no-repeat;
     background-color: black;
-    display: block;
+    display: none;
     width: 50px;
     height: 50px;
     border-radius: 100%;
@@ -341,9 +345,8 @@ a[class="legalLink"]:first-of-type{
     bottom: 70px;
 
     left: 50vw;
-    /*right: 50vw;*/
     height: auto;
-    max-height: 20vh;
+    max-height: 25vh;
     width: auto;
 
     padding: 2px;
