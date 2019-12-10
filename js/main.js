@@ -530,7 +530,7 @@ const showMenuBox = () => {
                 </label>
             </td>
         </tr>
-        <tr><td><button id='restartButton' onclick='endGameScreen(false)'>Reset game</button></td></tr>
+        <tr><td><button id='restartButton' onclick='resetGameConfirmation()'>Reset game</button></td></tr>
         <tr><td><button onclick='showAbout()'>About</button></td></tr>
     </table>
     `
@@ -545,9 +545,24 @@ const showMenuBox = () => {
     // Don't cover game logo
     let gameLogo = document.getElementById('gameLogo')
     menuBox.style.maxWidth = `${gameLogo.offsetLeft - gameLogo.offsetWidth/2}px`
+
+    // Don't go under are selection box
+    if(gameTime === 0){
+        let selectGameArea = document.getElementById('selectGameArea')
+        let elementsLocAndPadFromCSS = 11
+        menuBox.style.maxWidth = `${selectGameArea.offsetLeft - elementsLocAndPadFromCSS}px`
+    }
     
     // Smooth hiding of the copyright logo
     document.getElementById('menu').style.opacity = 0
+}
+
+const resetGameConfirmation = () => {
+    let c = confirm("Are you sure you want to restart the game?")
+    if(c)
+        endGameScreen(false)
+    else
+        hideMenuAndLegalIfVisible()
 }
 
 const changeAudioSetting = () => {
