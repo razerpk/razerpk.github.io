@@ -54,12 +54,13 @@ button {
 
 #selectGameArea{
     position: fixed;
-    bottom: 50vh;left: 50vw;
+    /*bottom: 50vh;*/ top: 10px; left: 50vw;
     padding: 5px;
     width: auto; height: auto;
 
     /* gameButton height/2 + 10px padding */
-    margin-bottom: 45px;
+    /* margin-bottom: 45px;*/
+    max-height: 30vh;
 
     border: 2px solid var(--borderColor);
     border-radius: 5px;

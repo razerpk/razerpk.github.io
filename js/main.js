@@ -914,12 +914,12 @@ const createRadioInputs = () => {
     let gameAreaWidth = selectGameArea.offsetWidth
 
     // Calculate max height for this area
-    let gameLogo = document.getElementById('gameLogo')
-    let gameLogoBottom = gameLogo.offsetTop + gameLogo.offsetHeight
-    let maxHeightForSelectGameArea = gameAreaOffSet - gameLogoBottom - (gameButton.offsetHeight/2)
+    //let gameLogo = document.getElementById('gameLogo')
+    //let gameLogoBottom = gameLogo.offsetTop + gameLogo.offsetHeight
+    //let maxHeightForSelectGameArea = gameAreaOffSet - gameLogoBottom - (gameButton.offsetHeight/2)
 
     selectGameArea.style.marginLeft = `${gameAreaWidth*(-1)/2}px`
-    selectGameArea.style.maxHeight = `${maxHeightForSelectGameArea}px`
+    //selectGameArea.style.maxHeight = `${maxHeightForSelectGameArea}px`
 }
 
 const changePlayArea = (areaSize, gameSize) => {
