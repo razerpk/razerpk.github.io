@@ -7,6 +7,13 @@ html,body {
     padding:0; 
     width: 100%;
     height: 100%;
+    -webkit-touch-callout: none; /* iOS Safari */
+    -webkit-user-select: none; /* Safari */
+    -khtml-user-select: none; /* Konqueror HTML */
+    -moz-user-select: none; /* Firefox */
+    -ms-user-select: none; /* Internet Explorer/Edge */
+    user-select: none; /* Non-prefixed version, currently supported by Chrome and Opera */
+    outline: none;
 }
 
 /*
@@ -54,16 +61,21 @@ button {
     padding: 3px;
 }
 
+#continueButton {
+    position: fixed;
+    top: 10px;
+    left: 50vw;
+    width: 120px; height: 60px;
+    margin-left: -60px;
+    display: none;
+}
+
 #selectGameArea{
     position: fixed;
-    /*bottom: 50vh;*/ top: 10px; left: 50vw;
+    top: 10px; left: 50vw;
     padding: 5px;
     width: auto; height: auto;
-
-    /* gameButton height/2 + 10px padding */
-    /* margin-bottom: 45px;*/
     max-height: 30vh;
-
     border: 2px solid var(--borderColor);
     border-radius: 5px;
     display: block;
@@ -72,7 +84,6 @@ button {
     text-align: left;
     font-size: large;
     line-height: 2;
-
     overflow: auto;
 }
 #selectGameArea > input[type="radio"] {
@@ -130,12 +141,9 @@ button {
 #menuBox {
     position: fixed;
     top: 5px; left: 5px;
-
-    /*white-space: nowrap;*/
     word-wrap: break-word;
     overflow: auto;
     font-size: large;
-
     color: white;
     border: 4px solid var(--borderColor);
     border-radius: 5px;
@@ -150,7 +158,6 @@ button {
 }
 #menuBox > table {
     display: block;
-    /*overflow: scroll;*/
 }
 #menuBox > table > tbody > tr > td {
     border-bottom: 2px solid white;
@@ -186,7 +193,6 @@ button {
     top: 10px;
     right: 10px;
     z-index: 1;
-    /*background-image: url('./img/base_circle.png');*/
     background-color: black;
     border: 2px solid var(--borderColor);
 }
@@ -301,7 +307,7 @@ a[class="mapboxgl-ctrl-logo"]{
     position: fixed;
     bottom: 28px;
     left: 50vw;
-    margin-left: -16px;
+    margin-left: -17px;
 }
 
 /*
@@ -357,7 +363,7 @@ a[class="legalLink"]:first-of-type{
 
 
 /*
-    <nav id='textBox'></nav>
+    TEXTBOX
 */
 
 #textBox{

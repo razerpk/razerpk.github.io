@@ -12,8 +12,7 @@ const LongitudeInKm = 111.320
 let TRAVELED_DISTANCE = 0
 let gameLoop
 let gameTimeLoop
-let expandTimeout
-let changeVisionRangeTimeOut
+let timeouts = []
 let activeBoosters = 0
 let gameTime = 0 //seconds
 let boosterTime = 0 //seconds
@@ -23,13 +22,13 @@ let menuBoxVisible = false
 let legalBoxVisible = false
 let isAudioOn = true
 let playedOOBSound = true
+let isExpandOn = false
 let expandedZoomLevel = 12.8
 let currentZoomLevel = 15
-let gameSizeOption = "medium"
-let markerAmount = 20
-let isExpandOn = false
 
 // Settings for game
+let gameSizeOption = "medium"
+let markerAmount = 20
 let VISION_RANGE = 0.15 //km
 let PLAYAREA = 0.5 //distance to the edge of play area from center km
 const MARKER_MIN_DISTANCE = 0.1 //km
@@ -85,7 +84,6 @@ const startGame = () => {
     }, 1000)
 
     gameLoop = setInterval(() => {
-        //console.log(currentZoomLevel)
         isMarkersOnUserRadius()
         if(isMarkerPickable()){
             drawCanvas()
@@ -93,7 +91,8 @@ const startGame = () => {
         arrowToNearestMarker()
 
         let playerOOB = outsideOfArea(overpassAreaValues, userLocation)
-        // Play out of bounds only between set interval if player stays out of bounds
+        // Play out of bounds sound only between set interval if player stays out of bounds
+        // OOB = out of bounds
         if(playerOOB && playedOOBSound){
             textBoxPopUpMessage(`
             WARNING: out of bounds
@@ -116,7 +115,6 @@ const startGame = () => {
         userMarker[0]._lngLat.lat = userLocation[1]
 
         // Creates polyline for user locations
-        
         let path = walkingPoints.features[0].geometry.coordinates
         // add current userMarker location to walkingPoints array if userMarker has moved
         if (!isSameLocation(path[path.length-1],userLocation)) {
@@ -236,7 +234,6 @@ const arrowToNearestMarker = () => {
 
 const drawArrow = (userLoc, markerLoc, vector, distance) => {
     distanceM = Math.round(distance*1000, 0)
-    console.log(distanceM);
     let x, y, endX, endY
     
     let sizeMultiplier = 3
@@ -314,31 +311,32 @@ const showDistanceToBooster = (x, y, dist) => {
     distToBooster.style.marginTop = `${distToBooster.offsetHeight*(-1)/2}px`
 }
 
-const kmVector = (markerLoc,userLoc) => {
+//transforms 2 long/lat points to km/km vector
+const kmVector = (markerLoc, userLoc) => {
     kmX = Math.abs(lngToKm(markerLoc[0], markerLoc[1]) - lngToKm(userLoc[0], markerLoc[1]))
     kmY = Math.abs(latToKm(markerLoc[1]) - latToKm(userLoc[1]))
     return [kmX, kmY]
 }
 
-function scaleVector(vector, scaler){
+const scaleVector = (vector, scaler) => {
     let newV=[
         vector[0]*scaler,
         vector[1]*scaler
     ]
-    return newV;
+    return newV
 }
 
-function normalizeVector(vector){
-    var magn=getMagnitude(vector);
+const normalizeVector = (vector) => {
+    var magn=getMagnitude(vector)
     var newV=[
         vector[0]/magn,
         vector[1]/magn
     ];
-    return newV;
+    return newV
 }
 
-function getMagnitude(vector){
-    return Math.sqrt(vector[0]*vector[0]+vector[1]*vector[1]);
+const getMagnitude = (vector) => {
+    return Math.sqrt(vector[0]*vector[0]+vector[1]*vector[1])
 }
 
 // Vision radius around player
@@ -355,6 +353,7 @@ const drawCanvas = (vision = VISION_RANGE) => {
         clearCircleArea(vision/pixelInKm)
 }
 
+//add play area borders to map
 const drawPlayAreaBorders = (overpassAreaValues) => {
 
     if (map.getSource('play-area')){
@@ -546,7 +545,7 @@ const showMenuBox = () => {
     let gameLogo = document.getElementById('gameLogo')
     menuBox.style.maxWidth = `${gameLogo.offsetLeft - gameLogo.offsetWidth/2}px`
 
-    // Don't go under are selection box
+    // Don't go under area selection box
     if(gameTime === 0){
         let selectGameArea = document.getElementById('selectGameArea')
         let elementsLocAndPadFromCSS = 11
@@ -558,6 +557,8 @@ const showMenuBox = () => {
 }
 
 const resetGameConfirmation = () => {
+    if (gameTime === 0)
+        return
     let c = confirm("Are you sure you want to restart the game?")
     if(c)
         endGameScreen(false)
@@ -636,14 +637,16 @@ const expandMap = () => {
         userMarker[0]._element.hidden = true
     }, 300)
     
-    expandTimeout = setTimeout(() => {
+    let expandTimeout = setTimeout(() => {
         currentZoomLevel += DEFAULT_MAP_ZOOM - expandedZoomLevel
         document.getElementById('expand').style.display = 'block'
         userMarker[0]._element.hidden = false
         isExpandOn = false
     }, 10 * 1000)
+    timeouts.push(expandTimeout)
 }
 
+// adds markers to map and to MARKERS array
 const addMarkersToMap = (overpassArea, overpassAreaValues) => {
 
     let overpassQuery =
@@ -652,19 +655,10 @@ const addMarkersToMap = (overpassArea, overpassAreaValues) => {
         ;
         (
         way
-            ["highway"="track"]
+            ["foot"="designated"]
             (${overpassArea});
         way
             ["highway"="residential"]
-            (${overpassArea});
-        way
-            ["highway"="footway"]
-            (${overpassArea});
-        way
-            ["highway"="path"]
-            (${overpassArea});
-        way
-            ["highway"="cycleway"]
             (${overpassArea});
         );
         >;
@@ -698,17 +692,12 @@ const addMarkersToMap = (overpassArea, overpassAreaValues) => {
             endGameScreen(false)
             alert('Not enough streets to place powerups')
         }
-        // TODO REMOVE
-        //let marker = addMarkerToMap([userMarker[0]._lngLat.lng + 0.001, userMarker[0]._lngLat.lat], 'marker')      
-        //marker.endPoint = true
-        //MARKERS = [...MARKERS, marker]
-        //
+
         // Only add super boosters if game area is large or xl
         if(gameSizeOption == "large" || gameSizeOption == "XL")
             MARKERS.forEach(marker => Math.random() < 0.2 ? marker.superbooster = true : marker)
 
         MARKERS[Math.floor(Math.random()*MARKERS.length)].endPoint = true
-        console.log('markers placed ', MARKERS.length)
     }
 }
 
@@ -874,7 +863,10 @@ const isMarkersOnUserRadius = () => {
     }
 }
 
-// TODO: END GAME
+// Delete marker from map if close to player.
+// if marker is end point, end the game 
+// returns: true if marker is picked
+//          false if no markers picked
 const isMarkerPickable = () => {
     let isMarkerOnRadius = false
 
@@ -883,7 +875,6 @@ const isMarkerPickable = () => {
         if (MARKERS[i]._element.hidden === false) {
             // distance between usermarker, MARKERS[i]
             if (haversineDistance([MARKERS[i]._lngLat.lng, MARKERS[i]._lngLat.lat], [userMarker[0]._lngLat.lng, userMarker[0]._lngLat.lat]) < PICKUP_RADIUS) {
-                console.log('deleting marker ',  MARKERS[i])
 
                 boostersPicked++
                 isMarkerOnRadius = true
@@ -945,15 +936,10 @@ const createRadioInputs = () => {
     let gameAreaOffSet = gameButton.offsetTop
     let gameAreaWidth = selectGameArea.offsetWidth
 
-    // Calculate max height for this area
-    //let gameLogo = document.getElementById('gameLogo')
-    //let gameLogoBottom = gameLogo.offsetTop + gameLogo.offsetHeight
-    //let maxHeightForSelectGameArea = gameAreaOffSet - gameLogoBottom - (gameButton.offsetHeight/2)
-
     selectGameArea.style.marginLeft = `${gameAreaWidth*(-1)/2}px`
-    //selectGameArea.style.maxHeight = `${maxHeightForSelectGameArea}px`
 }
 
+// game setting adjusting
 const changePlayArea = (areaSize, gameSize) => {
     PLAYAREA = areaSize
     gameSizeOption = gameSize
@@ -987,12 +973,12 @@ const changePlayArea = (areaSize, gameSize) => {
 const showAbout = () => {
     hideMenuAndLegalIfVisible()
     alert(`
-Gamegoal:
+Game goal:
 Find the end point among other boosters
 
 Boosters give temporary bonuses for 60s:
 - Booster: 50m vision boost
-- Super: booster 100m vision boost
+- Super booster: 100m vision boost (only in large and XL maps)
 
 Arrow inside vision range shows distance and direction to closest booster
 
@@ -1011,10 +997,12 @@ const endGameScreen = (endGame) => {
 
     hideMenuAndLegalIfVisible()
 
-    // These 3 need to be here!
-    clearInterval(expandTimeout)
-    userMarker[0]._element.hidden = false
-    clearInterval(changeVisionRangeTimeOut)
+    // Clear possible zoom and booster timeouts
+    for (let i=0; i<timeouts.length; i++) {
+        clearTimeout(timeouts[i])
+    }
+    timeouts = []
+    userMarker[0]._element.hidden = true
 
     currentZoomLevel = expandedZoomLevel
     map.flyTo({
@@ -1022,8 +1010,12 @@ const endGameScreen = (endGame) => {
         zoom: currentZoomLevel
     })
 
-    document.getElementById('gameButton').style.display = 'block'
-    document.getElementById('selectGameArea').style.display = 'block'
+    clearInterval(gameLoop)
+    clearInterval(gameTimeLoop)
+
+    setTimeout(() => {
+        document.getElementById('activeGameInfo').style.display = 'none'
+    }, 500)
     
     if(endGame){
         document.getElementById('textBox').style.display = 'block'
@@ -1032,13 +1024,44 @@ const endGameScreen = (endGame) => {
         Congratulations hunter!<br>
         <br>Map size: ${gameSizeOption}
         <br>Total time: ${pad(parseInt(gameTime / 60))}:${pad(gameTime % 60)}
-        <br>Boosters picked: ${boostersPicked}
+        <br>Boosters picked: ${boostersPicked} / ${MARKERS.length+boostersPicked}
         <br>Total travel length: ${TRAVELED_DISTANCE.toFixed(2)}km
-        <br>Speed: ${(TRAVELED_DISTANCE/(gameTime/3600)).toFixed(2)}km/h
+        <br>Average speed: ${(TRAVELED_DISTANCE/(gameTime/3600)).toFixed(2)}km/h
         `
         // Center textBox
         textBox.style.marginLeft = `${textBox.offsetWidth*(-1)/2}px`
+        textBox.style.bottom = "5px"
     }
+
+    MARKERS.map(marker => marker.remove())
+    MARKERS = []
+
+    document.getElementById('boosterTime').style.display = 'none'
+    document.getElementById('distToBooster').style.display = 'none'
+    document.getElementById('expand').style.display = 'none'
+    document.getElementById('expandTextCircle').style.display = 'none'
+    document.getElementById('gameTime').innerHTML = ""
+
+    let continueButton = document.getElementById('continueButton')
+    continueButton.style.display = 'block'
+    continueButton.onclick = function(e){ continueToNewGame() }
+    VISION_RANGE = 5 //km
+    drawCanvas()
+
+    if (!endGame)
+        continueToNewGame()
+}
+
+//resets everything for a new game
+const continueToNewGame = () => {
+    map.removeLayer('area-boundary')
+    map.removeSource('play-area')
+    document.getElementById('textBox').style.bottom = "70px"
+    document.getElementById('textBox').style.display = "none"
+    userMarker[0]._element.hidden = false
+    document.getElementById('gameButton').style.display = 'block'
+    document.getElementById('selectGameArea').style.display = 'block'
+    document.getElementById('continueButton').style.display = 'none'
 
     TRAVELED_DISTANCE = 0
     gameTime = 0
@@ -1047,22 +1070,10 @@ const endGameScreen = (endGame) => {
     activeBoosters = 0
     zoomOutTime = 0
     isExpandOn = false
-    MARKERS.map(marker => marker.remove())
-    MARKERS = []
     VISION_RANGE = 0.15 //km
     walkingPoints.features[0].geometry.coordinates = []
-    clearInterval(gameLoop)
-    clearInterval(gameTimeLoop)
-    document.getElementById('gameTime').innerHTML = `${pad(parseInt(gameTime / 60))}:${pad(gameTime % 60)}`
-    document.getElementById('boosterTime').style.display = 'none'
-    document.getElementById('distToBooster').style.display = 'none'
-    document.getElementById('expand').style.display = 'none'
-    document.getElementById('expandTextCircle').style.display = 'none'
-
-    setTimeout(() => {
-        document.getElementById('activeGameInfo').style.display = 'none'
-    }, 500)
-    
+    map.getSource('trace').setData(walkingPoints)
+    document.getElementById('gameTime').innerHTML = ``
     drawCanvas(0)
 }
 
@@ -1073,18 +1084,19 @@ const changeVisionRange = (marker) => {
     if(marker.superbooster){
         visionBoost = 0.1
         zoomBoost = zoomBoost * 2
-        console.log("YOU GOT SUPER BOOSTER")
     }
     VISION_RANGE += visionBoost
     currentZoomLevel -= zoomBoost
     boosterTime = 60
     activeBoosters++
-    changeVisionRangeTimeOut = setTimeout(() => {
+
+    let changeVisionRangeTimeOut = setTimeout(() => {
         VISION_RANGE -= visionBoost
         currentZoomLevel += zoomBoost
         drawCanvas()
         activeBoosters--
     }, 60 * 1000)
+    timeouts.push(changeVisionRangeTimeOut)
 }
 
 const pad = (val) => {
@@ -1110,9 +1122,10 @@ const textBoxPopUpMessage = (message, timer) => {
     let textBox = document.getElementById('textBox')
     textBox.innerHTML = message
 
-    setTimeout(() => {
+    let textTimeout = setTimeout(() => {
         document.getElementById('textBox').style.display = 'none'
     }, timer * 1000)
+    timeouts.push(textTimeout)
 
     // Center textBox
     textBox.style.marginLeft = `${textBox.offsetWidth*(-1)/2}px`
