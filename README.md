@@ -1,3 +1,8 @@
+# Creators
+Rico Pietarinen
+Eetu Mutanen
+Jimi Tuononen
+
 ** TODO **
 
 - HOW TO PLAY INFO
